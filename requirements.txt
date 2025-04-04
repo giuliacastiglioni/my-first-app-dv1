@@ -2,7 +2,7 @@ streamlit
 pandas
 matplotlib 
 mplsoccer
-cv2
+opencv-python
 numpy
 tempfile
 PIL
