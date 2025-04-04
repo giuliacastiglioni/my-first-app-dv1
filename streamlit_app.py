@@ -61,4 +61,21 @@ if uploaded_file is not None:
                 x1, y1, x2, y2 = map(int, box[:4])
                 
                 # Estrai la parte dell'immagine relativa al giocatore
-                player_img_
+                player_img = frame[y1:y2, x1:x2]
+                
+                # Calcola il colore dominante in HSV
+                dominant_color_hsv = get_dominant_color_hsv(player_img)
+                
+                # Assegna la squadra in base al colore
+                team = assign_team_color_hsv(dominant_color_hsv)
+                
+                # Disegna rettangolo, ID e squadra
+                cv2.rectangle(frame_rgb, (x1, y1), (x2, y2), (0, 255, 0), 2)
+                cv2.putText(frame_rgb, f"Squadra: {team}", (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 2)
+        
+        # Mostra il frame con il rilevamento dei giocatori e la distinzione della squadra
+        stframe.image(frame_rgb, channels="RGB")
+    
+    cap.release()
+    
+    st.success("Video elaborato con successo!")
