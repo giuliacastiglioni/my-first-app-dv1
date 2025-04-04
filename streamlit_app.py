@@ -9,21 +9,25 @@ st.title("Analisi Video per il Calcio a 7 Femminile")
 # Caricamento del video
 uploaded_file = st.file_uploader("Carica un video", type=["mp4", "avi", "mov"])
 
-# Funzione per determinare il colore prevalente
-def get_dominant_color(image):
-    # Calcola il colore medio nell'immagine
-    avg_color = np.mean(image, axis=(0, 1))
+# Funzione per determinare il colore prevalente in HSV
+def get_dominant_color_hsv(image):
+    # Converti l'immagine da BGR a HSV
+    hsv_image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+    avg_color = np.mean(hsv_image, axis=(0, 1))
     return avg_color
 
-# Funzione per determinare la squadra in base al colore
-def assign_team_color(color):
-    # Squadra 1: Bianco (con toni di rosso)
-    if np.all(color > np.array([160, 140, 140])) and np.all(color < np.array([255, 210, 210])):  # Bianco con rosso
+# Funzione per determinare la squadra in base al colore in HSV
+def assign_team_color_hsv(hsv_color):
+    h, s, v = hsv_color
+
+    # Squadra 1: Bianco con toni di rosso (in HSV: Hue intorno a 0-10, alta saturazione, alta luminosità)
+    if 0 <= h <= 10 and 150 <= s <= 255 and 180 <= v <= 255:  # Rosso-bianco
         return "Squadra 1"
-    # Squadra 2: Giallo e Blu
-    elif np.all(color > np.array([200, 180, 0])) and np.all(color < np.array([255, 255, 100])):  # Giallo
+    # Squadra 2: Giallo (Hue intorno a 20-40, alta saturazione, alta luminosità)
+    elif 20 <= h <= 40 and 150 <= s <= 255 and 150 <= v <= 255:  # Giallo
         return "Squadra 2"
-    elif np.all(color > np.array([100, 100, 150])) and np.all(color < np.array([150, 150, 255])):  # Blu
+    # Squadra 2: Blu (Hue intorno a 100-130, alta saturazione, alta luminosità)
+    elif 100 <= h <= 130 and 150 <= s <= 255 and 150 <= v <= 255:  # Blu
         return "Squadra 2"
     else:
         return "Non identificato"
@@ -57,21 +61,4 @@ if uploaded_file is not None:
                 x1, y1, x2, y2 = map(int, box[:4])
                 
                 # Estrai la parte dell'immagine relativa al giocatore
-                player_img = frame[y1:y2, x1:x2]
-                
-                # Calcola il colore dominante
-                dominant_color = get_dominant_color(player_img)
-                
-                # Assegna la squadra in base al colore
-                team = assign_team_color(dominant_color)
-                
-                # Disegna rettangolo, ID e squadra
-                cv2.rectangle(frame_rgb, (x1, y1), (x2, y2), (0, 255, 0), 2)
-                cv2.putText(frame_rgb, f"Squadra: {team}", (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 2)
-        
-        # Mostra il frame con il rilevamento dei giocatori e la distinzione della squadra
-        stframe.image(frame_rgb, channels="RGB")
-    
-    cap.release()
-    
-    st.success("Video elaborato con successo!")
+                player_img_
