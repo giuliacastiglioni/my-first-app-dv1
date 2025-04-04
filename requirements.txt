@@ -1,2 +1,8 @@
 streamlit
 pandas
+matplotlib 
+mplsoccer
+cv2
+numpy
+tempfile
+PIL
