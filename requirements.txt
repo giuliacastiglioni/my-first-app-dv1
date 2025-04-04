@@ -6,3 +6,4 @@ opencv-python
 numpy
 tempfile
 PIL
+cv2

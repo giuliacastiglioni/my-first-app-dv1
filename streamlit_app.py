@@ -4,7 +4,7 @@ import tempfile
 import numpy as np
 from PIL import Image
 
-st.title("Analisi Video per il Calcio a 7 Amatoriale")
+st.title("Analisi Video per il Calcio a 7 Femminile")
 
 # Caricamento del video
 uploaded_file = st.file_uploader("Carica un video", type=["mp4", "avi", "mov"])
