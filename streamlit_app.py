@@ -3,8 +3,9 @@ import cv2
 import tempfile
 import numpy as np
 from ultralytics import YOLO
+from collections import defaultdict
 
-st.title("Analisi Video per il Calcio a 7 Femminile")
+st.title("Analisi Video per il Calcio a 7 Amatoriale")
 
 # Caricamento del video
 uploaded_file = st.file_uploader("Carica un video", type=["mp4", "avi", "mov"])
@@ -22,6 +23,9 @@ if uploaded_file is not None:
     
     stframe = st.empty()
     
+    # Dizionario per assegnare ID ai giocatori
+    player_tracks = defaultdict(lambda: len(player_tracks))
+    
     while cap.isOpened():
         ret, frame = cap.read()
         if not ret:
@@ -36,9 +40,16 @@ if uploaded_file is not None:
         for result in results:
             for box in result.boxes.xyxy:
                 x1, y1, x2, y2 = map(int, box[:4])
+                center_x, center_y = (x1 + x2) // 2, (y1 + y2) // 2
+                
+                # Assegna ID al giocatore
+                player_id = player_tracks[(center_x, center_y)]
+                
+                # Disegna rettangolo e ID
                 cv2.rectangle(frame_rgb, (x1, y1), (x2, y2), (0, 255, 0), 2)
+                cv2.putText(frame_rgb, f"ID: {player_id}", (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 2)
         
-        # Mostra il frame con rilevamento giocatori
+        # Mostra il frame con rilevamento e ID giocatori
         stframe.image(frame_rgb, channels="RGB")
         
     cap.release()
