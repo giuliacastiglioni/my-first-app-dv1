@@ -7,3 +7,4 @@ numpy
 tempfile
 PIL
 cv2
+ultralytics
