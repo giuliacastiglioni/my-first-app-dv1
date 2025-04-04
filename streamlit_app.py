@@ -7,10 +7,8 @@ import matplotlib.pyplot as plt
 
 st.title("Analisi Video per il Calcio a 7 Femminile")
 
-# Caricamento del video
 uploaded_file = st.file_uploader("Carica un video", type=["mp4", "avi", "mov"])
 
-# Funzione per determinare il colore prevalente nella maglia
 def get_dominant_color(image):
     hsv_image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
     
@@ -48,18 +46,25 @@ if uploaded_file is not None:
     model = YOLO("yolov8n.pt")
     
     cap = cv2.VideoCapture(video_path)
-    
     stframe = st.empty()
 
-    # Lista per tracciare le posizioni dei giocatori
     player_positions = {"VJ": [], "Squadra 2": []}
     
+    frame_skip = 5  # Analizza ogni 5 frame
+    frame_counter = 0
+
     while cap.isOpened():
         ret, frame = cap.read()
         if not ret:
             break
         
-        frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        frame_counter += 1
+        if frame_counter % frame_skip != 0:
+            continue
+        
+        frame_resized = cv2.resize(frame, (640, 360))  # Riduci la risoluzione
+        frame_rgb = cv2.cvtColor(frame_resized, cv2.COLOR_BGR2RGB)
+        
         results = model(frame_rgb)
         
         for result in results:
@@ -68,39 +73,30 @@ if uploaded_file is not None:
                 player_img = frame[y1:y2, x1:x2]
                 team = get_dominant_color(player_img)
                 
-                # Calcoliamo il centro del giocatore
                 center_x, center_y = (x1 + x2) // 2, (y1 + y2) // 2
                 
-                # Salviamo la posizione del giocatore in base alla squadra
                 if team == "VJ":
                     player_positions["VJ"].append((center_x, center_y))
                 elif team == "Squadra 2":
                     player_positions["Squadra 2"].append((center_x, center_y))
                 
-                # Disegniamo il rettangolo e il testo
                 cv2.rectangle(frame_rgb, (x1, y1), (x2, y2), (0, 255, 0), 2)
                 cv2.putText(frame_rgb, f"{team}", (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 2)
 
-        # Mostriamo il frame
         stframe.image(frame_rgb, channels="RGB")
         
     cap.release()
 
-    # Visualizza la heatmap dei movimenti dei giocatori
+    # Visualizzazione Heatmap
     st.subheader("Heatmap di Movimento dei Giocatori")
-
-    # Creazione di una heatmap per ogni squadra
     fig, axs = plt.subplots(1, 2, figsize=(12, 6))
     for i, (team, positions) in enumerate(player_positions.items()):
         if positions:
-            # Convertiamo la lista di posizioni in array numpy per la heatmap
             positions = np.array(positions)
             axs[i].hist2d(positions[:, 0], positions[:, 1], bins=50, cmap="YlGnBu")
             axs[i].set_title(f"Heatmap {team}")
             axs[i].set_xlabel("Posizione X")
             axs[i].set_ylabel("Posizione Y")
-
-    # Mostra la heatmap
     st.pyplot(fig)
     
     st.success("Video elaborato con successo!")
