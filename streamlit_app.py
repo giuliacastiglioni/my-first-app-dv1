@@ -1,151 +1,61 @@
 import streamlit as st
 import pandas as pd
-import math
-from pathlib import Path
+import matplotlib.pyplot as plt
+from mplsoccer import Court
 
-# Set the title and favicon that appear in the Browser's tab bar.
-st.set_page_config(
-    page_title='GDP dashboard',
-    page_icon=':earth_americas:', # This is an emoji shortcode. Could be a URL too.
-)
+# Titolo dell'app
+st.title("🏀 Statistiche Basket Femminile College")
 
-# -----------------------------------------------------------------------------
-# Declare some useful functions.
+# Caricamento dei dati
+uploaded_file = st.file_uploader("Carica un file CSV con le statistiche", type=["csv"])
 
-@st.cache_data
-def get_gdp_data():
-    """Grab GDP data from a CSV file.
+if uploaded_file is not None:
+    df = pd.read_csv(uploaded_file)
+    st.write("Anteprima dei dati:")
+    st.dataframe(df.head())
+    
+    # Selezione della squadra
+    if 'Team' in df.columns:
+        team_selected = st.selectbox("Seleziona una squadra", df['Team'].unique())
+        df_team = df[df['Team'] == team_selected]
+        
+        # Grafico punti per partita
+        if 'Points' in df.columns and 'Game' in df.columns:
+            fig, ax = plt.subplots()
+            ax.plot(df_team['Game'], df_team['Points'], marker='o', linestyle='-')
+            ax.set_title(f"Punti per partita - {team_selected}")
+            ax.set_xlabel("Partita")
+            ax.set_ylabel("Punti")
+            st.pyplot(fig)
+        
+        # Istogramma delle statistiche
+        numeric_columns = df_team.select_dtypes(include=['number']).columns
+        stat_selected = st.selectbox("Seleziona una statistica", numeric_columns)
+        fig_hist, ax_hist = plt.subplots()
+        ax_hist.hist(df_team[stat_selected], bins=20, color='blue', alpha=0.7)
+        ax_hist.set_title(f"Distribuzione di {stat_selected}")
+        ax_hist.set_xlabel(stat_selected)
+        ax_hist.set_ylabel("Frequenza")
+        st.pyplot(fig_hist)
+        
+        # Selezione della giocatrice per visualizzare i tiri
+        if {'X', 'Y', 'Player', 'Made'}.issubset(df.columns):
+            player_selected = st.selectbox("Seleziona una giocatrice", df_team['Player'].unique())
+            df_player = df_team[df_team['Player'] == player_selected]
+            
+            # Creazione del campo da basket
+            fig_court, ax_court = plt.subplots(figsize=(5, 4))
+            court = Court(court_dims=(28, 15), court_lines=True)  # Misure in metri
+            court.draw(ax=ax_court)
+            
+            # Plot dei tiri
+            colors = df_player['Made'].map({1: 'green', 0: 'red'})
+            ax_court.scatter(df_player['X'], df_player['Y'], c=colors, edgecolors='black')
+            
+            ax_court.set_title(f"Tiri di {player_selected}")
+            st.pyplot(fig_court)
+else:
+    st.write("Carica un file CSV per iniziare!")
 
-    This uses caching to avoid having to read the file every time. If we were
-    reading from an HTTP endpoint instead of a file, it's a good idea to set
-    a maximum age to the cache with the TTL argument: @st.cache_data(ttl='1d')
-    """
-
-    # Instead of a CSV on disk, you could read from an HTTP endpoint here too.
-    DATA_FILENAME = Path(__file__).parent/'data/gdp_data.csv'
-    raw_gdp_df = pd.read_csv(DATA_FILENAME)
-
-    MIN_YEAR = 1960
-    MAX_YEAR = 2022
-
-    # The data above has columns like:
-    # - Country Name
-    # - Country Code
-    # - [Stuff I don't care about]
-    # - GDP for 1960
-    # - GDP for 1961
-    # - GDP for 1962
-    # - ...
-    # - GDP for 2022
-    #
-    # ...but I want this instead:
-    # - Country Name
-    # - Country Code
-    # - Year
-    # - GDP
-    #
-    # So let's pivot all those year-columns into two: Year and GDP
-    gdp_df = raw_gdp_df.melt(
-        ['Country Code'],
-        [str(x) for x in range(MIN_YEAR, MAX_YEAR + 1)],
-        'Year',
-        'GDP',
-    )
-
-    # Convert years from string to integers
-    gdp_df['Year'] = pd.to_numeric(gdp_df['Year'])
-
-    return gdp_df
-
-gdp_df = get_gdp_data()
-
-# -----------------------------------------------------------------------------
-# Draw the actual page
-
-# Set the title that appears at the top of the page.
-'''
-# :earth_americas: GDP dashboard
-
-Browse GDP data from the [World Bank Open Data](https://data.worldbank.org/) website. As you'll
-notice, the data only goes to 2022 right now, and datapoints for certain years are often missing.
-But it's otherwise a great (and did I mention _free_?) source of data.
-'''
-
-# Add some spacing
-''
-''
-
-min_value = gdp_df['Year'].min()
-max_value = gdp_df['Year'].max()
-
-from_year, to_year = st.slider(
-    'Which years are you interested in?',
-    min_value=min_value,
-    max_value=max_value,
-    value=[min_value, max_value])
-
-countries = gdp_df['Country Code'].unique()
-
-if not len(countries):
-    st.warning("Select at least one country")
-
-selected_countries = st.multiselect(
-    'Which countries would you like to view?',
-    countries,
-    ['DEU', 'FRA', 'GBR', 'BRA', 'MEX', 'JPN'])
-
-''
-''
-''
-
-# Filter the data
-filtered_gdp_df = gdp_df[
-    (gdp_df['Country Code'].isin(selected_countries))
-    & (gdp_df['Year'] <= to_year)
-    & (from_year <= gdp_df['Year'])
-]
-
-st.header('GDP over time', divider='gray')
-
-''
-
-st.line_chart(
-    filtered_gdp_df,
-    x='Year',
-    y='GDP',
-    color='Country Code',
-)
-
-''
-''
-
-
-first_year = gdp_df[gdp_df['Year'] == from_year]
-last_year = gdp_df[gdp_df['Year'] == to_year]
-
-st.header(f'GDP in {to_year}', divider='gray')
-
-''
-
-cols = st.columns(4)
-
-for i, country in enumerate(selected_countries):
-    col = cols[i % len(cols)]
-
-    with col:
-        first_gdp = first_year[first_year['Country Code'] == country]['GDP'].iat[0] / 1000000000
-        last_gdp = last_year[last_year['Country Code'] == country]['GDP'].iat[0] / 1000000000
-
-        if math.isnan(first_gdp):
-            growth = 'n/a'
-            delta_color = 'off'
-        else:
-            growth = f'{last_gdp / first_gdp:,.2f}x'
-            delta_color = 'normal'
-
-        st.metric(
-            label=f'{country} GDP',
-            value=f'{last_gdp:,.0f}B',
-            delta=growth,
-            delta_color=delta_color
-        )
+# Footer
+st.write("App creata con ❤️ usando Streamlit e Matplotlib")
