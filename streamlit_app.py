@@ -3,6 +3,7 @@ import cv2
 import tempfile
 import numpy as np
 from ultralytics import YOLO
+import matplotlib.pyplot as plt
 
 st.title("Analisi Video per il Calcio a 7 Femminile")
 
@@ -88,3 +89,30 @@ if uploaded_file is not None:
     cap.release()
     
     st.success("Video elaborato con successo!")
+# Funzione per ottenere le coordinate relative dei giocatori
+def get_player_position(x1, y1, x2, y2, frame_width):
+    # Restituisce la posizione orizzontale (x) relativa del giocatore
+    player_center_x = (x1 + x2) / 2
+    relative_position_x = player_center_x / frame_width  # Normalizza la posizione
+    return relative_position_x
+
+# Inizializzazione della heatmap (100 bin per la larghezza del campo)
+heatmap = np.zeros(100)  # Per una rappresentazione semplificata del campo, 100 "bin" orizzontali
+
+# Supponiamo di avere una lista di coordinate di giocatori rilevati
+# Esempio di posizione (x1, y1, x2, y2) per alcuni giocatori (queste vengono da YOLO)
+positions = [(100, 200, 150, 250), (300, 180, 350, 230), (600, 150, 650, 200)]  # (x1, y1, x2, y2)
+
+# Supponiamo che la larghezza del frame sia 800 (adatta per il tuo video)
+frame_width = 800
+
+# Calcola le posizioni relative dei giocatori e aggiorna la heatmap
+for (x1, y1, x2, y2) in positions:
+    relative_position = get_player_position(x1, y1, x2, y2, frame_width)
+    heatmap[int(relative_position * 100)] += 1  # Incrementa la zona corrispondente
+
+# Visualizzazione della heatmap
+plt.imshow([heatmap], cmap='hot', aspect='auto')
+plt.colorbar(label="Numero di Giocatori")
+plt.title("Heatmap delle Posizioni dei Giocatori")
+plt.show()
