@@ -36,7 +36,7 @@ def get_dominant_color(image):
     
     # Determiniamo quale colore è il predominante
     if red_area > yellow_area and red_area > blue_area:
-        return "Squadra 1"  # Bianco con rosso
+        return "VJ"  # Bianco con rosso
     elif yellow_area > red_area and yellow_area > blue_area:
         return "Squadra 2"  # Giallo
     elif blue_area > red_area and blue_area > yellow_area:
@@ -80,7 +80,7 @@ if uploaded_file is not None:
                 
                 # Disegna rettangolo, ID e squadra
                 cv2.rectangle(frame_rgb, (x1, y1), (x2, y2), (0, 255, 0), 2)
-                cv2.putText(frame_rgb, f"Squadra: {team}", (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 2)
+                cv2.putText(frame_rgb, f"{team}", (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 2)
         
         # Mostra il frame con il rilevamento dei giocatori e la distinzione della squadra
         stframe.image(frame_rgb, channels="RGB")
