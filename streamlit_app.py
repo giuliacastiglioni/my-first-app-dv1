@@ -4,6 +4,7 @@ import tempfile
 import numpy as np
 from ultralytics import YOLO
 import matplotlib.pyplot as plt
+import trackpy as tp
 
 st.title("Analisi Video per il Calcio a 7 Femminile")
 
@@ -41,10 +42,40 @@ def get_dominant_color(image):
     else:
         return "Non identificato"
 
+# Funzione per tracciare la palla usando trackpy
+def track_ball_with_trackpy(frame):
+    hsv_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+    
+    # Imposta la maschera per il colore giallo (palla)
+    lower_yellow = np.array([20, 100, 100])
+    upper_yellow = np.array([40, 255, 255])
+    yellow_mask = cv2.inRange(hsv_frame, lower_yellow, upper_yellow)
+    
+    # Filtro per ridurre il rumore
+    yellow_mask = cv2.GaussianBlur(yellow_mask, (15, 15), 0)
+    
+    # Trova i contorni della palla
+    contours, _ = cv2.findContours(yellow_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    ball_positions = []
+    
+    for contour in contours:
+        if cv2.contourArea(contour) > 500:  # Filtro per dimensione della palla
+            (x, y), radius = cv2.minEnclosingCircle(contour)
+            if radius > 10:  # Filtro per dimensione minima della palla
+                ball_positions.append([x, y, radius])
+                
+    return ball_positions
+
 # Variabile per memorizzare lo stato del video e dei risultati
 if 'results_cache' not in st.session_state:
     st.session_state.results_cache = None
     st.session_state.replay = False
+
+if 'ball_positions' not in st.session_state:  # Inizializza ball_positions
+    st.session_state.ball_positions = []
+
+if 'player_positions' not in st.session_state:  # Inizializza player_positions
+    st.session_state.player_positions = {"VJ": [], "Squadra 2": []}
 
 # Caricamento e analisi del video
 if uploaded_file is not None:
@@ -62,7 +93,8 @@ if uploaded_file is not None:
         model = YOLO("yolov8n.pt")
     
         cap = cv2.VideoCapture(video_path)
-        stframe = st.empty()
+        stframe_player = st.empty()
+        stframe_ball = st.empty()
 
         player_positions = {"VJ": [], "Squadra 2": []}
         
@@ -104,8 +136,20 @@ if uploaded_file is not None:
                     cv2.rectangle(frame_rgb, (x1, y1), (x2, y2), (0, 255, 0), 2)
                     cv2.putText(frame_rgb, f"{team}", (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 2)
 
-            # Visualizza il frame corrente
-            stframe.image(frame_rgb, channels="RGB")
+            # Traccia la palla e aggiorna la sua posizione
+            ball_positions = track_ball_with_trackpy(frame)
+            for (x, y, radius) in ball_positions:
+                st.session_state.ball_positions.append([x, y])
+
+            # Visualizza il frame con il tracking dei giocatori
+            stframe_player.image(frame_rgb, channels="RGB")
+
+            # Visualizza il frame con il tracking della palla
+            frame_ball = frame.copy()
+            for (x, y, radius) in ball_positions:
+                cv2.circle(frame_ball, (int(x), int(y)), int(radius), (0, 255, 255), 2)
+                cv2.circle(frame_ball, (int(x), int(y)), 5, (0, 0, 255), -1)  # Centro della palla
+            stframe_ball.image(frame_ball, channels="RGB")
         
         cap.release()
 
@@ -114,14 +158,7 @@ if uploaded_file is not None:
         
         # Visualizzazione Heatmap (o altro tipo di analisi)
         st.subheader("Heatmap di Movimento dei Giocatori")
-        
-        # Prepara i dati per la visualizzazione
         fig, axs = plt.subplots(1, 2, figsize=(12, 6))
-        
-        # Imposta una scala comune per gli assi X e Y
-        x_limit = (0, 1920)  # Risoluzione orizzontale
-        y_limit = (0, 1080)  # Risoluzione verticale
-        
         for i, (team, positions) in enumerate(player_positions.items()):
             if positions:
                 positions = np.array(positions)
@@ -129,13 +166,19 @@ if uploaded_file is not None:
                 axs[i].set_title(f"Heatmap {team}")
                 axs[i].set_xlabel("Posizione X")
                 axs[i].set_ylabel("Posizione Y")
-                
-                # Imposta la stessa scala per entrambi i grafici
-                axs[i].set_xlim(x_limit)
-                axs[i].set_ylim(y_limit)
-        
-        st.pyplot(fig)
-        
+        st.pyplot(fig)  # Passiamo la figura a st.pyplot()
+
+        # Visualizzazione della traiettoria della palla separata dalla heatmap
+        st.subheader("Traiettoria della Palla")
+        ball_positions = np.array(st.session_state.ball_positions)
+        if ball_positions.size > 0:
+            fig, ax = plt.subplots(figsize=(8, 6))  # Creiamo una nuova figura
+            ax.plot(ball_positions[:, 0], ball_positions[:, 1], marker='o', markersize=5, color='red')
+            ax.set_title("Traiettoria della Palla")
+            ax.set_xlabel("Posizione X")
+            ax.set_ylabel("Posizione Y")
+            st.pyplot(fig)  # Passiamo la figura a st.pyplot()
+
         st.success("Video elaborato con successo!")
 
     else:

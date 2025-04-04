@@ -8,3 +8,4 @@ tempfile
 PIL
 cv2
 ultralytics
+trackpy
