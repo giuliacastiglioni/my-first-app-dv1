@@ -9,3 +9,4 @@ PIL
 cv2
 ultralytics
 trackpy
+sklearn
